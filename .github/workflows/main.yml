@@ -1,0 +1,55 @@
+name: Training & Docker Pipeline (Advance)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-train-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.12.7
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12.7'
+
+    - name: Install Dependencies
+      run: |
+        pip install mlflow==2.19.0 pandas scikit-learn matplotlib dagshub
+
+    # Step 1: Jalankan Training Otomatis
+    - name: Run MLflow Training
+      env:
+        MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+      run: |
+        mlflow run MLProject --no-conda
+
+    # Step 2: Login ke Docker Hub
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # Step 3: Build Docker Image dari Model DagsHub
+    - name: Build Docker Image
+      env:
+        MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      run: |
+        python MLProject/build_docker.py
+
+    # Step 4: Push ke Docker Hub
+    - name: Push Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/submission-ml-eka:latest
