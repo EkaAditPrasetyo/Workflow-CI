@@ -4,9 +4,7 @@ import mlflow
 
 # --- SOLUSI LOGIN OTOMATIS GITHUB ACTIONS ---
 # Mengatur token agar dagshub.init() tidak meminta otorisasi browser
-token = os.getenv("DAGSHUB_TOKEN")
-if token:
-    os.environ["DAGSHUB_USER_TOKEN"] = token
+os.environ["DAGSHUB_USER_TOKEN"] = os.getenv("DAGSHUB_TOKEN", "")
 
 import dagshub
 import matplotlib.pyplot as plt

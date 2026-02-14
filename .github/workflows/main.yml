@@ -22,7 +22,7 @@ jobs:
       run: |
         pip install mlflow==2.19.0 pandas scikit-learn matplotlib dagshub
 
-    # Step 1: Jalankan Training Otomatis
+    # Step 1: Jalankan Training Otomatis (Perbaikan: Jalankan python langsung)
     - name: Run MLflow Training
       env:
         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
@@ -30,7 +30,8 @@ jobs:
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
-        mlflow run MLProject --env-manager local
+        # Masuk ke folder dan jalankan script secara langsung agar token terbaca sempurna
+        cd MLProject && python modelling.py
 
     # Step 2: Login ke Docker Hub
     - name: Login to Docker Hub
