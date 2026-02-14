@@ -10,10 +10,10 @@ os.environ["MLFLOW_TRACKING_PASSWORD"] = os.environ["MLFLOW_TRACKING_PASSWORD"]
 docker_user = os.environ["DOCKER_USERNAME"]
 docker_image_name = f"{docker_user}/submission-ml-eka:latest"
 
-# 1. Cari Run ID Terakhir dari Eksperimen "Water_Potability_Tuning"
+# 1. Cari Run ID Terakhir dari Eksperimen "Tuning_Manual_Advance"
 print("Mencari run terakhir...")
 # Nama eksperimen ini sudah sesuai dengan yang ada di DagsHub kamu
-runs = mlflow.search_runs(experiment_names=["Water_Potability_Tuning"])
+runs = mlflow.search_runs(experiment_names=["Tuning_Manual_Advance"])
 
 if not runs.empty:
     # Ambil run paling atas (paling baru dibuat oleh workflow)

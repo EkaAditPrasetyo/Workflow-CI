@@ -30,7 +30,7 @@ jobs:
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
       run: |
-        mlflow run MLProject --no-conda
+        mlflow run MLProject --env-manager local
 
     # Step 2: Login ke Docker Hub
     - name: Login to Docker Hub
