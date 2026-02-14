@@ -16,7 +16,7 @@ from sklearn.metrics import accuracy_score, classification_report
 
 
 # 1. Inisialisasi ke DagsHub (Sesuai kriteria Advance untuk simpan online)
-dagshub.init(repo_owner='EkaAditPrasetyo', repo_name='Eksperimen_SML_EkaAditPrasetyo', mlflow=True) [cite: 28, 29]
+dagshub.init(repo_owner='EkaAditPrasetyo', repo_name='Eksperimen_SML_EkaAditPrasetyo', mlflow=True)
 
 # 2. Load Data
 df = pd.read_csv('water_potability_clean.csv')
