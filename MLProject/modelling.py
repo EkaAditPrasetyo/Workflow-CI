@@ -1,17 +1,19 @@
+import os # Penting untuk mengambil token environment
 import pandas as pd
 import mlflow
-import dagshub
-import matplotlib.pyplot as plt
-import os # Penting untuk mengambil token environment
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
 
 # --- SOLUSI LOGIN OTOMATIS GITHUB ACTIONS ---
 # Mengatur token agar dagshub.init() tidak meminta otorisasi browser
 token = os.getenv("DAGSHUB_TOKEN")
 if token:
     os.environ["DAGSHUB_USER_TOKEN"] = token
+
+import dagshub
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
 
 # 1. Inisialisasi ke DagsHub (Sesuai kriteria Advance untuk simpan online)
 dagshub.init(repo_owner='EkaAditPrasetyo', repo_name='Eksperimen_SML_EkaAditPrasetyo', mlflow=True) [cite: 28, 29]
