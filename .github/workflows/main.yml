@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-    # Opsional: Trigger manual agar bisa diklik run kapan saja
-    workflow_dispatch:
+  # Opsional: Trigger manual agar bisa diklik run kapan saja
+  workflow_dispatch:
 
 jobs:
   build-train-deploy:
@@ -15,39 +15,42 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
+    # 1. SETUP PYTHON (DENGAN CACHE AGAR CEPAT)
     - name: Set up Python 3.12.7
       uses: actions/setup-python@v4
       with:
         python-version: '3.12.7'
+        cache: 'pip' # Fitur ini akan menyimpan library agar run berikutnya ngebut
 
-    # 1. Install Library
+    # 2. INSTALL LIBRARY (ANTI-MACET/HANG)
     - name: Install Dependencies
       run: |
-        pip install mlflow==2.19.0 pandas scikit-learn matplotlib dagshub
+        python -m pip install --upgrade pip
+        # --prefer-binary mencegah kompilasi ulang yang bikin lama
+        pip install mlflow==2.19.0 pandas scikit-learn matplotlib dagshub --prefer-binary
 
-    # 2. TRAINING (Core Step)
-    # Perbaikan: Path harus lengkap ke 'Workflow-CI/MLProject'
+    # 3. TRAINING (SOLUSI ERROR "FATAL GIT")
+    # Kita masuk dulu ke foldernya (cd), baru jalankan mlflow run di titik (.) itu.
     - name: Run MLflow Training via MLflow Project
       env:
         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
-        # Pastikan environment variable ini ada agar script modelling.py tidak error
+        # Token user wajib ada agar script bisa akses DagsHub tanpa login browser
         DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }} 
       run: |
-        # --env-manager=local: Memakai environment python yang sudah diinstall di step sebelumnya (lebih cepat)
-        mlflow run Workflow-CI/MLProject --env-manager=local
+        cd Workflow-CI/MLProject
+        mlflow run . --env-manager=local
 
-    # 3. Login Docker
+    # 4. LOGIN DOCKER
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # 4. BUILD IMAGE
-    # Perbaikan: Path script build_docker.py juga harus lengkap
+    # 5. BUILD IMAGE
     - name: Build Docker Image
       env:
         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
@@ -56,9 +59,10 @@ jobs:
         DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       run: |
+        # Script build_docker.py akan mencari run ID terakhir secara otomatis
         python Workflow-CI/MLProject/build_docker.py
 
-    # 5. PUSH IMAGE
+    # 6. PUSH IMAGE
     - name: Push Image
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/submission-ml-eka:latest
