@@ -39,7 +39,7 @@ jobs:
         # Token user wajib ada agar script bisa akses DagsHub tanpa login browser
         DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }} 
       run: |
-        cd Workflow-CI/MLProject
+        cd MLProject
         mlflow run . --env-manager=local
 
     # 4. LOGIN DOCKER
@@ -59,7 +59,7 @@ jobs:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       run: |
         # Script build_docker.py akan mencari run ID terakhir secara otomatis
-        python Workflow-CI/MLProject/build_docker.py
+        python MLProject/build_docker.py
 
     # 6. PUSH IMAGE
     - name: Push Image
