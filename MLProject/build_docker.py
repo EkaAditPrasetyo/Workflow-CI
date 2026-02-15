@@ -1,13 +1,12 @@
 import mlflow
 import os
+import sys
 
-# 1. Setup Environment (Mengambil langsung dari GitHub Secrets)
-# Gunakan os.getenv agar tidak error jika salah satu variabel kosong
+# 1. Setup Environment
 os.environ["MLFLOW_TRACKING_URI"] = os.getenv("MLFLOW_TRACKING_URI", "")
 os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME", "")
 os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
 
-# Penting: Tambahkan token DagsHub agar mlflow search_runs tidak minta login browser
 dagshub_token = os.getenv("DAGSHUB_TOKEN")
 if dagshub_token:
     os.environ["DAGSHUB_USER_TOKEN"] = dagshub_token
@@ -16,10 +15,15 @@ if dagshub_token:
 docker_user = os.getenv("DOCKER_USERNAME", "user")
 docker_image_name = f"{docker_user}/submission-ml-eka:latest"
 
-# 2. Cari Run ID Terakhir dari Eksperimen "Tuning_Manual_Advance"
-print("Mencari run terakhir dari eksperimen: Tuning_Manual_Advance...")
+# 2. Cari Run ID Terakhir
+# [PERBAIKAN PENTING]: Nama eksperimen HARUS SAMA dengan yang ada di modelling.py
+experiment_name = "CI_Pipeline_Training" 
+
+print(f"Mencari run terakhir dari eksperimen: {experiment_name}...")
+
 try:
-    runs = mlflow.search_runs(experiment_names=["Tuning_Manual_Advance"])
+    # Kita cari run yang statusnya FINISHED saja untuk keamanan
+    runs = mlflow.search_runs(experiment_names=[experiment_name], filter_string="status = 'FINISHED'")
     
     if not runs.empty:
         # Ambil run paling atas (terbaru)
@@ -30,17 +34,22 @@ try:
         model_uri = f"runs:/{last_run_id}/model_tuned"
         print(f"Sedang memproses build Docker dari: {model_uri}...")
         
-        # 4. Jalankan perintah build docker (Kriteria Advance)
-        # Perintah ini akan membungkus model menjadi image Docker [cite: 45]
-        build_cmd = f"mlflow models build-docker -m {model_uri} -n {docker_image_name} --enable-mlserver"
+        # 4. Jalankan perintah build docker
+        # Catatan: --enable-mlserver opsional, jika error bisa dihapus. 
+        # Kita gunakan command standar mlflow docker build
+        build_cmd = f"mlflow models build-docker -m {model_uri} -n {docker_image_name}"
+        
+        print(f"Menjalankan command: {build_cmd}")
         exit_code = os.system(build_cmd)
         
         if exit_code == 0:
             print(f"✅ Docker Build Sukses: {docker_image_name}")
         else:
-            raise Exception("❌ Gagal build Docker Image. Cek koneksi ke Docker Daemon.")
+            print("❌ Gagal build Docker Image.")
+            sys.exit(1) # Return error code agar GitHub Actions merah
     else:
-        raise Exception("❌ Tidak ada run ditemukan di DagsHub. Pastikan step training sukses!")
+        print(f"❌ Tidak ada run ditemukan di eksperimen {experiment_name}.")
+        sys.exit(1)
 except Exception as e:
     print(f"Terjadi kesalahan: {e}")
-    exit(1)
+    sys.exit(1)

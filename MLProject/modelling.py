@@ -1,62 +1,80 @@
-import os # Penting untuk mengambil token environment
+import os
+import sys
 import pandas as pd
 import mlflow
-
-# --- SOLUSI LOGIN OTOMATIS GITHUB ACTIONS ---
-# Mengatur token agar dagshub.init() tidak meminta otorisasi browser
-os.environ["DAGSHUB_USER_TOKEN"] = os.getenv("DAGSHUB_TOKEN", "")
-
 import dagshub
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 
+# --- 1. SETUP KONEKSI DAGSHUB (SANGAT PENTING UNTUK CI) ---
+# Kita pastikan script tidak error jika token belum terset
+token = os.getenv("DAGSHUB_TOKEN")
+if not token:
+    print("[WARNING] DAGSHUB_TOKEN tidak ditemukan di environment variable.")
+    # Script tidak kita matikan, tapi mlflow mungkin akan gagal auth jika repo private.
 
-# 1. Inisialisasi ke DagsHub (Sesuai kriteria Advance untuk simpan online)
+# Set environment variable agar dagshub.init tidak meminta login browser
+os.environ["DAGSHUB_USER_TOKEN"] = token if token else ""
+
+# Inisialisasi DagsHub
+# REPO_OWNER dan REPO_NAME harus hardcoded atau diambil dari env jika ingin dinamis
 dagshub.init(repo_owner='EkaAditPrasetyo', repo_name='Eksperimen_SML_EkaAditPrasetyo', mlflow=True)
 
-# 2. Load Data
-df = pd.read_csv('water_potability_clean.csv')
+# --- 2. LOAD DATA ---
+# Penting: Saat 'mlflow run', working directory adalah root folder MLProject.
+# Pastikan file csv ada di sebelah file modelling.py ini.
+csv_filename = 'water_potability_clean.csv'
+
+if not os.path.exists(csv_filename):
+    print(f"[ERROR] File {csv_filename} tidak ditemukan di folder eksekusi.")
+    sys.exit(1) # Keluar dengan error agar pipeline CI berhenti (fail)
+
+df = pd.read_csv(csv_filename)
 X = df.drop('Potability', axis=1)
 y = df['Potability']
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 3. Set Nama Eksperimen
-mlflow.set_experiment("Tuning_Manual_Advance")
+# --- 3. TRAINING & TRACKING (MANUAL - ADVANCE) ---
+# Gunakan nama eksperimen yang spesifik untuk CI agar mudah dibedakan
+mlflow.set_experiment("CI_Pipeline_Training")
 
-with mlflow.start_run(run_name="Tuning_Manual_Advance"):
-    # --- MANUAL LOGGING PARAMETER (Kriteria Skilled/Advance) ---
+with mlflow.start_run(run_name="Automated_Train_GitHub_Actions"):
+    
+    # A. Parameter
     n_estimators = 150
     max_depth = 10
     mlflow.log_param("n_estimators", n_estimators)
     mlflow.log_param("max_depth", max_depth)
     
-    # Training Model
+    # B. Training
+    print("Sedang melatih model...")
     model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, random_state=42)
     model.fit(X_train, y_train)
     
-    # --- MANUAL LOGGING METRIK ---
+    # C. Metrik
     acc = accuracy_score(y_test, model.predict(X_test))
     mlflow.log_metric("accuracy", acc)
+    print(f"Model Accuracy: {acc}")
     
-    # 4. LOG ARTEFAK UTAMA (Model)
+    # D. Artefak Utama (Model)
     mlflow.sklearn.log_model(model, "model_tuned")
     
-    # --- LOG ARTEFAK TAMBAHAN (Syarat Advance: Minimal 2 artefak tambahan) --- 
-    
-    # Artefak 1: Feature Importance Plot
+    # E. Artefak Tambahan 1: Feature Importance
     feat_importances = pd.Series(model.feature_importances_, index=X.columns)
     plt.figure(figsize=(10,6))
     feat_importances.nlargest(10).plot(kind='barh')
-    plt.title("Fitur Paling Berpengaruh")
-    plt.savefig("feature_importance.png")
-    mlflow.log_artifact("feature_importance.png")
+    plt.title("Feature Importance (CI)")
+    plt.tight_layout()
+    plt.savefig("feature_importance_ci.png")
+    mlflow.log_artifact("feature_importance_ci.png")
     
-    # Artefak 2: Classification Report
+    # F. Artefak Tambahan 2: Classification Report
     report = classification_report(y_test, model.predict(X_test))
-    with open("classification_report.txt", "w") as f:
+    with open("classification_report_ci.txt", "w") as f:
         f.write(report)
-    mlflow.log_artifact("classification_report.txt")
+    mlflow.log_artifact("classification_report_ci.txt")
     
-    print(f"Berhasil! Model dan 2 artefak tersimpan di DagsHub dengan akurasi: {acc}")
+    print("Selesai! Semua artefak telah dikirim ke DagsHub.")
