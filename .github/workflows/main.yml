@@ -40,7 +40,7 @@ jobs:
         DAGSHUB_USER_TOKEN: ${{ secrets.DAGSHUB_TOKEN }} 
       run: |
         cd MLProject
-        mlflow run . --env-manager=local
+        mlflow run . --env-manager=local --experiment-name CI_Pipeline_Training
 
     # 4. LOGIN DOCKER
     - name: Login to Docker Hub
